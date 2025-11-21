@@ -12,6 +12,8 @@ from sklearn.decomposition import PCA
 import plotly.express as px
 import plotly.graph_objects as go
 import pickle
+import joblib
+
 
 
 # -------------------------------
@@ -206,12 +208,12 @@ if page == "🏦 Dashboard Corporativo":
 if st.sidebar.button("Cargar Modelos"):
     try:
         # Cargar modelos desde la carpeta del proyecto
-        model_rf = pickle.load(open("model_rf.pkl", "rb"))
-        model_lgbm = pickle.load(open("model_lgbm.pkl", "rb"))
-        preprocessor = pickle.load(open("preprocessor.pkl", "rb"))
+        model_rf = joblib.load("rf_best.joblib")
+        model_lgbm = joblib.load("lgb_best.joblib")
+        preprocessor = joblib.load("preprocessor.joblib")
 
         # Cargar modelo TFLite
-        interpreter = tf.lite.Interpreter(model_path="model_nn.tflite")
+        interpreter = tf.lite.Interpreter(model_path="keras_model.tflite")
         interpreter.allocate_tensors()
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
