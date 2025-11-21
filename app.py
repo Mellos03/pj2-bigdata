@@ -7,7 +7,7 @@ import numpy as np
 from pymongo import MongoClient
 from pathlib import Path
 import joblib
-import tflite_runtime.interpreter as tflite   # ← Reemplaza TensorFlow
+import tflite_runtime.interpreter as tflite
 from sklearn.decomposition import PCA
 import plotly.express as px
 import plotly.graph_objects as go
@@ -37,19 +37,13 @@ page = st.sidebar.radio(
 # -------------------------------
 @st.cache_resource
 def load_models():
-    # Preprocesador
     preprocessor = joblib.load("preprocessor.joblib")
-
-    # ===== Cargar modelo TFLite =====
     interpreter = tflite.Interpreter(model_path="keras_model.tflite")
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
-
-    # Otros modelos
     model_rf = joblib.load("rf_best.joblib")
     model_lgbm = joblib.load("lgb_best.joblib")
-
     return preprocessor, interpreter, input_details, output_details, model_rf, model_lgbm
 
 try:
@@ -58,7 +52,6 @@ try:
 except Exception as e:
     st.error(f"Error cargando modelos: {e}")
     models_loaded = False
-
 
 # -------------------------------
 # Conexión MongoDB
@@ -72,6 +65,38 @@ def load_data_mongo(uri, db_name, collection, n_rows=50000):
     df = pd.DataFrame(data)
     return df
 
+# -------------------------------
+# Mapeo y features globales
+# -------------------------------
+RENAME_MAP = {
+    "demographics_age": "age",
+    "demographics_occupation_status": "occupation_status",
+    "demographics_years_employed": "years_employed",
+    "financial_profile_annual_income": "annual_income",
+    "financial_profile_credit_score": "credit_score",
+    "financial_profile_credit_history_years": "credit_history_years",
+    "financial_profile_savings_assets": "savings_assets",
+    "financial_profile_current_debt": "current_debt",
+    "credit_behavior_defaults_on_file": "defaults_on_file",
+    "credit_behavior_delinquencies_last_2yrs": "delinquencies_last_2yrs",
+    "credit_behavior_derogatory_marks": "derogatory_marks",
+    "loan_request_product_type": "product_type",
+    "loan_request_loan_intent": "loan_intent",
+    "loan_request_loan_amount": "loan_amount",
+    "loan_request_interest_rate": "interest_rate",
+    "ratios_debt_to_income_ratio": "debt_to_income_ratio",
+    "ratios_loan_to_income_ratio": "loan_to_income_ratio",
+    "ratios_payment_to_income_ratio": "payment_to_income_ratio"
+}
+
+FEATURES = [
+    "age","occupation_status","years_empleado","annual_income","credit_score","credit_history_years",
+    "savings_assets","current_debt","defaults_on_file","delinquencies_last_2yrs","derogatory_marks",
+    "product_type","loan_intent","loan_amount","interest_rate","debt_to_income_ratio",
+    "loan_to_income_ratio","payment_to_income_ratio"
+]
+
+TARGET = "loan_status_bin"
 
 # -------------------------------
 # Sidebar MongoDB
@@ -87,135 +112,86 @@ if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
             df = load_data_mongo(mongo_uri, db_name, collection_name)
             st.success(f"Datos cargados: {df.shape[0]} filas x {df.shape[1]} columnas")
 
-            # ---- Mapeo columnas largas → cortas ----
-    RENAME_MAP = {
-        "demographics_age": "age",
-        "demographics_occupation_status": "occupation_status",
-        "demographics_years_employed": "years_employed",
-        "financial_profile_annual_income": "annual_income",
-        "financial_profile_credit_score": "credit_score",
-        "financial_profile_credit_history_years": "credit_history_years",
-        "financial_profile_savings_assets": "savings_assets",
-        "financial_profile_current_debt": "current_debt",
-        "credit_behavior_defaults_on_file": "defaults_on_file",
-        "credit_behavior_delinquencies_last_2yrs": "delinquencies_last_2yrs",
-        "credit_behavior_derogatory_marks": "derogatory_marks",
-        "loan_request_product_type": "product_type",
-        "loan_request_loan_intent": "loan_intent",
-        "loan_request_loan_amount": "loan_amount",
-        "loan_request_interest_rate": "interest_rate",
-        "ratios_debt_to_income_ratio": "debt_to_income_ratio",
-        "ratios_loan_to_income_ratio": "loan_to_income_ratio",
-        "ratios_payment_to_income_ratio": "payment_to_income_ratio"
-    }
+            # ---- Aplanar columnas anidadas ----
+            nested_cols = ["demographics", "financial_profile", "credit_behavior", "loan_request", "ratios"]
+            for nested in nested_cols:
+                if nested in df.columns:
+                    safe_dicts = [x if isinstance(x, dict) else {} for x in df[nested]]
+                    expanded = pd.json_normalize(safe_dicts)
+                    expanded.columns = [f"{nested}_{c}" for c in expanded.columns]
+                    df = pd.concat([df.drop(columns=[nested]), expanded], axis=1)
 
-FEATURES = [
-    "age","occupation_status","years_employed","annual_income","credit_score","credit_history_years",
-    "savings_assets","current_debt","defaults_on_file","delinquencies_last_2yrs","derogatory_marks",
-    "product_type","loan_intent","loan_amount","interest_rate","debt_to_income_ratio",
-    "loan_to_income_ratio","payment_to_income_ratio"]
+            # ---- Renombrar columnas ----
+            df.rename(columns=RENAME_MAP, inplace=True)
 
-TARGET = "loan_status_bin"
+            # ---- Crear target binario ----
+            df['loan_status_bin'] = (df['loan_status'] == 'Approval').astype(int)
 
+            st.success("Datos preparados correctamente para el EDA.")
 
-    # ---- Aplanar columnas anidadas ----
-        nested_cols = ["demographics", "financial_profile", "credit_behavior", "loan_request", "ratios"]
-
-        for nested in nested_cols:
-            if nested in df.columns:
-                safe_dicts = [x if isinstance(x, dict) else {} for x in df[nested]]
-                expanded = pd.json_normalize(safe_dicts)
-                expanded.columns = [f"{nested}_{c}" for c in expanded.columns]
-                df = pd.concat([df.drop(columns=[nested]), expanded], axis=1)
-
-        # ---- Renombrar columnas ----
-        df.rename(columns=RENAME_MAP, inplace=True)
-
-        # ---- Crear target binario ----
-        df['loan_status_bin'] = (df['loan_status'] == 'Approval').astype(int)
-
-        st.success("Datos preparados correctamente para el EDA.")
-
-
-# ================================
-# 1️⃣ Dashboard Corporativo Ejecutiva
-# ================================
+# -------------------------------
+# Dashboard Corporativo
+# -------------------------------
 if page == "🏦 Dashboard Corporativo":
     st.title("🏦 Credit Risk Dashboard – Executive Edition")
 
     if 'df' in locals():
-
-        # ---- KPIs ----
+        # KPIs
         st.markdown("### 📊 KPIs Financieros")
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
         approval_rate = df['loan_status_bin'].mean() * 100
         kpi1.metric("📈 Tasa Aprobación", f"{approval_rate:.2f}%")
         kpi2.metric("💰 Promedio Ingreso Anual", f"${df['annual_income'].mean():,.0f}")
         kpi3.metric("🏦 Promedio Deuda", f"${df['current_debt'].mean():,.0f}")
         kpi4.metric("💳 Promedio Monto Préstamo", f"${df['loan_amount'].mean():,.0f}")
-
         st.markdown("---")
 
-        # ---- Distribuciones numéricas ----
+        # Distribuciones numéricas
         numeric_cols = [
             'age', 'years_employed', 'annual_income', 'credit_score',
             'credit_history_years', 'savings_assets', 'current_debt',
             'loan_amount', 'interest_rate', 'debt_to_income_ratio',
             'loan_to_income_ratio', 'payment_to_income_ratio'
         ]
-
         st.markdown("### 📈 Distribuciones Numéricas")
         for col in numeric_cols:
             if col in df.columns:
-                fig = px.histogram(
-                    df, x=col, color='loan_status_bin',
-                    color_discrete_map={0: 'firebrick', 1: 'green'},
-                    marginal="box", nbins=50,
-                    title=f"Distribución de {col}"
-                )
+                fig = px.histogram(df, x=col, color='loan_status_bin',
+                                   color_discrete_map={0: 'firebrick', 1: 'green'},
+                                   marginal="box", nbins=50, title=f"Distribución de {col}")
                 st.plotly_chart(fig, use_container_width=True)
 
-        # ---- Distribuciones categóricas ----
+        # Distribuciones categóricas
         categorical_cols = ['occupation_status', 'product_type', 'loan_intent']
         st.markdown("### 🏷 Distribuciones Categóricas")
         for col in categorical_cols:
             if col in df.columns:
-                fig = px.histogram(
-                    df, x=col, color='loan_status_bin',
-                    color_discrete_map={0: 'firebrick', 1: 'green'},
-                    title=f"{col} vs Loan Status"
-                )
+                fig = px.histogram(df, x=col, color='loan_status_bin',
+                                   color_discrete_map={0: 'firebrick', 1: 'green'},
+                                   title=f"{col} vs Loan Status")
                 st.plotly_chart(fig, use_container_width=True)
 
-        # ---- Matriz de correlación ----
+        # Matriz de correlación
         st.markdown("### 🔗 Correlaciones Numéricas")
         corr = df[numeric_cols].corr()
-        fig_corr = px.imshow(
-            corr, text_auto=True,
-            color_continuous_scale="RdBu_r",
-            title="Matriz de Correlación"
-        )
+        fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
+                             title="Matriz de Correlación")
         st.plotly_chart(fig_corr, use_container_width=True)
 
-        # ---- PCA 3D ----
+        # PCA 3D
         st.markdown("### 🎯 PCA 3D – Separación por Loan Status")
         df_numeric = df[numeric_cols].fillna(0)
         pca = PCA(n_components=3)
         pca_res = pca.fit_transform(df_numeric)
-        df['pca1'], df['pca2'], df['pca3'] = pca_res[:, 0], pca_res[:, 1], pca_res[:, 2]
-
-        fig3d = px.scatter_3d(
-            df, x='pca1', y='pca2', z='pca3',
-            color='loan_status_bin',
-            color_discrete_map={0: 'firebrick', 1: 'green'},
-            opacity=0.7,
-            title="PCA 3D: Loan Status"
-        )
+        df['pca1'], df['pca2'], df['pca3'] = pca_res[:,0], pca_res[:,1], pca_res[:,2]
+        fig3d = px.scatter_3d(df, x='pca1', y='pca2', z='pca3', color='loan_status_bin',
+                              color_discrete_map={0:'firebrick',1:'green'}, opacity=0.7,
+                              title="PCA 3D: Loan Status")
         st.plotly_chart(fig3d, use_container_width=True)
 
     else:
         st.info("Carga los datos desde el sidebar para ver el dashboard.")
+
 
 
 # ================================
