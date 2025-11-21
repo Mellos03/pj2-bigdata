@@ -87,6 +87,37 @@ if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
             df = load_data_mongo(mongo_uri, db_name, collection_name)
             st.success(f"Datos cargados: {df.shape[0]} filas x {df.shape[1]} columnas")
 
+            # ---- Mapeo columnas largas → cortas ----
+RENAME_MAP = {
+    "demographics_age": "age",
+    "demographics_occupation_status": "occupation_status",
+    "demographics_years_employed": "years_employed",
+    "financial_profile_annual_income": "annual_income",
+    "financial_profile_credit_score": "credit_score",
+    "financial_profile_credit_history_years": "credit_history_years",
+    "financial_profile_savings_assets": "savings_assets",
+    "financial_profile_current_debt": "current_debt",
+    "credit_behavior_defaults_on_file": "defaults_on_file",
+    "credit_behavior_delinquencies_last_2yrs": "delinquencies_last_2yrs",
+    "credit_behavior_derogatory_marks": "derogatory_marks",
+    "loan_request_product_type": "product_type",
+    "loan_request_loan_intent": "loan_intent",
+    "loan_request_loan_amount": "loan_amount",
+    "loan_request_interest_rate": "interest_rate",
+    "ratios_debt_to_income_ratio": "debt_to_income_ratio",
+    "ratios_loan_to_income_ratio": "loan_to_income_ratio",
+    "ratios_payment_to_income_ratio": "payment_to_income_ratio"
+}
+
+FEATURES = [
+    "age","occupation_status","years_employed","annual_income","credit_score","credit_history_years",
+    "savings_assets","current_debt","defaults_on_file","delinquencies_last_2yrs","derogatory_marks",
+    "product_type","loan_intent","loan_amount","interest_rate","debt_to_income_ratio",
+    "loan_to_income_ratio","payment_to_income_ratio"
+]
+TARGET = "loan_status_bin"
+
+
     # ---- Aplanar columnas anidadas ----
         nested_cols = ["demographics", "financial_profile", "credit_behavior", "loan_request", "ratios"]
 
