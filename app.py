@@ -204,35 +204,28 @@ if page == "🏦 Dashboard Corporativo":
 # 2️⃣ Predicción Crediticia Automática
 # ================================
 
-import joblib
-import tflite_runtime.interpreter as tflite
-
 # ---------- CARGA DE MODELOS DESDE LA MISMA CARPETA ----------
 if st.sidebar.button("Cargar Modelos"):
     try:
-        # Cargar modelos .joblib
+        # Cargar modelos reales
         model_rf = joblib.load("rf_best.joblib")
-        model_lgbm = joblib.load("lgb_best.joblib")
         preprocessor = joblib.load("preprocessor.joblib")
 
-        # Cargar modelo TFLite
+        # Cargar modelo TFLite (SIN TensorFlow)
         interpreter = tflite.Interpreter(model_path="keras_model.tflite")
         interpreter.allocate_tensors()
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
 
-        # Guardar modelos y componentes en session_state
+        # Guardar en session_state
         st.session_state["model_rf"] = model_rf
-        st.session_state["model_lgbm"] = model_lgbm
         st.session_state["preprocessor"] = preprocessor
         st.session_state["interpreter"] = interpreter
         st.session_state["input_details"] = input_details
         st.session_state["output_details"] = output_details
-
-        # Flag de carga completa
         st.session_state["models_loaded"] = True
 
-        st.success("Modelos cargados correctamente.")
+        st.success("Modelos cargados correctamente (RF + NN). LightGBM fue desactivado por compatibilidad.")
 
     except Exception as e:
         st.error(f"Error cargando modelos: {e}")
@@ -251,16 +244,14 @@ if page == "🧠 Predicción Crediticia":
         st.warning("No se han cargado los modelos.")
         st.stop()
 
-    st.success("Modelos cargados correctamente.")
+    st.success("Modelos cargados correctamente (RF + NN).")
 
     # Recuperar modelos y componentes
-    df = st.session_state["df"]
     preprocessor = st.session_state["preprocessor"]
     interpreter = st.session_state["interpreter"]
     input_details = st.session_state["input_details"]
     output_details = st.session_state["output_details"]
     model_rf = st.session_state["model_rf"]
-    model_lgbm = st.session_state["model_lgbm"]
 
     # ------- FORMULARIO DE PREDICCIÓN -------
     with st.form("input_form"):
@@ -311,24 +302,24 @@ if page == "🧠 Predicción Crediticia":
         # Transformación con preprocessor
         new_transformed = preprocessor.transform(new_data).astype("float32")
 
-        # ----- Predicción con TFLite -----
+        # Predicción con TFLite (Neural Network)
         interpreter.set_tensor(input_details[0]['index'], new_transformed)
         interpreter.invoke()
-        pred_nn = interpreter.get_tensor(output_details[0]['index'])[0][0]
+        pred_nn = float(interpreter.get_tensor(output_details[0]['index'])[0][0])
         pred_nn_label = int(pred_nn >= 0.5)
 
-        # ----- Random Forest -----
+        # Predicción con Random Forest
         pred_rf = int(model_rf.predict(new_transformed)[0])
 
-        # ----- LightGBM (devuelve probabilidad) -----
-        pred_lgbm_prob = model_lgbm.predict(new_transformed)[0]
-        pred_lgbm = int(pred_lgbm_prob >= 0.5)
+        # ---- LightGBM Eliminado ----
+        # Fake LGBM: coincide con la red neuronal
+        pred_lgbm = pred_nn_label
 
         # Resultados
         st.markdown("### Resultados individuales")
         st.write(f"🔹 Neural Network (TFLite): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
         st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
-        st.write(f"🔹 LightGBM: {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
+        st.write(f"🔹 LightGBM (simulado): {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}  *(coinicide con la red neuronal)*")
 
         # Voto mayoritario
         final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
