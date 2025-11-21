@@ -200,82 +200,98 @@ if page == "🏦 Dashboard Corporativo":
 if page == "🧠 Predicción Crediticia":
     st.title("🧠 Predicción Crediticia – Executive Edition")
 
-    if 'df' not in locals():
+    # ----- VALIDACIONES -----
+    if "df" not in st.session_state:
         st.info("Carga los datos desde MongoDB Azure primero.")
-    elif not models_loaded:
+        st.stop()
+
+    if "models_loaded" not in st.session_state or not st.session_state["models_loaded"]:
         st.warning("No se han cargado los modelos.")
-    else:
-        st.success("Modelos cargados correctamente.")
+        st.stop()
 
-        with st.form("input_form"):
-            st.subheader("Ingrese datos del solicitante")
-            col1, col2 = st.columns(2)
+    st.success("Modelos cargados correctamente.")
 
-            with col1:
-                age = st.number_input("Edad:", 18, 70, 30)
-                years_employed = st.number_input("Años Empleado:", 0, 40, 3)
-                annual_income = st.number_input("Ingreso Anual ($):", 15000, 250000, 50000)
-                credit_score = st.number_input("Credit Score:", 300, 850, 650)
-                credit_history_years = st.number_input("Historial Crediticio (años):", 0, 30, 5)
-                savings_assets = st.number_input("Ahorros/Assets:", 0, 300000, 5000)
-                current_debt = st.number_input("Deuda Actual:", 0, 200000, 10000)
-                defaults_on_file = st.number_input("Defaults on file (0/1):", 0, 1, 0)
-                delinquencies_last_2yrs = st.number_input("Delinquencies last 2yrs:", 0, 10, 0)
-                derogatory_marks = st.number_input("Derogatory marks:", 0, 5, 0)
+    # Recuperamos las variables importantes
+    df = st.session_state["df"]
+    models_loaded = st.session_state["models_loaded"]
+    preprocessor = st.session_state["preprocessor"]
+    interpreter = st.session_state["interpreter"]
+    input_details = st.session_state["input_details"]
+    output_details = st.session_state["output_details"]
+    model_rf = st.session_state["model_rf"]
+    model_lgbm = st.session_state["model_lgbm"]
 
-            with col2:
-                product_type = st.selectbox("Tipo Producto:", ['Credit Card', 'Personal Loan', 'Line of Credit'])
-                loan_intent = st.selectbox("Intención Préstamo:", ['Personal', 'Education', 'Medical', 'Business', 'Home Improvement', 'Debt Consolidation'])
-                loan_amount = st.number_input("Monto Préstamo ($):", 500, 100000, 10000)
-                interest_rate = st.number_input("Tasa de Interés (%):", 6, 23, 15)
-                debt_to_income_ratio = st.number_input("Debt-to-Income Ratio:", 0.0, 0.8, 0.3)
-                loan_to_income_ratio = st.number_input("Loan-to-Income Ratio:", 0.0, 2.0, 0.7)
-                payment_to_income_ratio = st.number_input("Payment-to-Income Ratio:", 0.0, 0.7, 0.2)
-                occupation_status = st.selectbox("Ocupación:", ['Employed', 'Self-Employed', 'Student'])
+    # ------- FORMULARIO DE PREDICCIÓN -------
+    with st.form("input_form"):
+        st.subheader("Ingrese datos del solicitante")
+        col1, col2 = st.columns(2)
 
-            submitted = st.form_submit_button("🔮 Predecir")
+        with col1:
+            age = st.number_input("Edad:", 18, 70, 30)
+            years_employed = st.number_input("Años Empleado:", 0, 40, 3)
+            annual_income = st.number_input("Ingreso Anual ($):", 15000, 250000, 50000)
+            credit_score = st.number_input("Credit Score:", 300, 850, 650)
+            credit_history_years = st.number_input("Historial Crediticio (años):", 0, 30, 5)
+            savings_assets = st.number_input("Ahorros/Assets:", 0, 300000, 5000)
+            current_debt = st.number_input("Deuda Actual:", 0, 200000, 10000)
+            defaults_on_file = st.number_input("Defaults on file (0/1):", 0, 1, 0)
+            delinquencies_last_2yrs = st.number_input("Delinquencies last 2yrs:", 0, 10, 0)
+            derogatory_marks = st.number_input("Derogatory marks:", 0, 5, 0)
 
-        if submitted:
-            new_data = pd.DataFrame({
-                "age": [age], "years_employed": [years_employed], "annual_income": [annual_income],
-                "credit_score": [credit_score], "credit_history_years": [credit_history_years],
-                "savings_assets": [savings_assets], "current_debt": [current_debt],
-                "defaults_on_file": [defaults_on_file],
-                "delinquencies_last_2yrs": [delinquencies_last_2yrs],
-                "derogatory_marks": [derogatory_marks],
-                "product_type": [product_type], "loan_intent": [loan_intent],
-                "loan_amount": [loan_amount], "interest_rate": [interest_rate],
-                "debt_to_income_ratio": [debt_to_income_ratio],
-                "loan_to_income_ratio": [loan_to_income_ratio],
-                "payment_to_income_ratio": [payment_to_income_ratio],
-                "occupation_status": [occupation_status]
-            })
+        with col2:
+            product_type = st.selectbox("Tipo Producto:", ['Credit Card', 'Personal Loan', 'Line of Credit'])
+            loan_intent = st.selectbox("Intención Préstamo:", ['Personal', 'Education', 'Medical', 'Business', 'Home Improvement', 'Debt Consolidation'])
+            loan_amount = st.number_input("Monto Préstamo ($):", 500, 100000, 10000)
+            interest_rate = st.number_input("Tasa de Interés (%):", 6, 23, 15)
+            debt_to_income_ratio = st.number_input("Debt-to-Income Ratio:", 0.0, 0.8, 0.3)
+            loan_to_income_ratio = st.number_input("Loan-to-Income Ratio:", 0.0, 2.0, 0.7)
+            payment_to_income_ratio = st.number_input("Payment-to-Income Ratio:", 0.0, 0.7, 0.2)
+            occupation_status = st.selectbox("Ocupación:", ['Employed', 'Self-Employed', 'Student'])
 
-            # Transformar con pipeline
-            new_transformed = preprocessor.transform(new_data).astype("float32")
+        submitted = st.form_submit_button("🔮 Predecir")
 
-            # ----- PREDICCIÓN CON TFLITE -----
-            interpreter.set_tensor(input_details[0]['index'], new_transformed)
-            interpreter.invoke()
-            pred_nn = interpreter.get_tensor(output_details[0]['index'])[0][0]
-            pred_nn_label = int(pred_nn >= 0.5)
+    # ------- PREDICCIÓN -------
+    if submitted:
+        new_data = pd.DataFrame({
+            "age": [age], "years_employed": [years_employed], "annual_income": [annual_income],
+            "credit_score": [credit_score], "credit_history_years": [credit_history_years],
+            "savings_assets": [savings_assets], "current_debt": [current_debt],
+            "defaults_on_file": [defaults_on_file],
+            "delinquencies_last_2yrs": [delinquencies_last_2yrs],
+            "derogatory_marks": [derogatory_marks],
+            "product_type": [product_type], "loan_intent": [loan_intent],
+            "loan_amount": [loan_amount], "interest_rate": [interest_rate],
+            "debt_to_income_ratio": [debt_to_income_ratio],
+            "loan_to_income_ratio": [loan_to_income_ratio],
+            "payment_to_income_ratio": [payment_to_income_ratio],
+            "occupation_status": [occupation_status]
+        })
 
-            # Otros modelos
-            pred_rf = model_rf.predict(new_transformed)[0]
-            pred_lgbm = model_lgbm.predict(new_transformed)[0]
+        # Transformar con pipeline
+        new_transformed = preprocessor.transform(new_data).astype("float32")
 
-            st.markdown("### Resultados individuales")
-            st.write(f"🔹 Neural Network (TFLite): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
-            st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
-            st.write(f"🔹 LightGBM: {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
+        # ----- PREDICCIÓN CON TFLITE -----
+        interpreter.set_tensor(input_details[0]['index'], new_transformed)
+        interpreter.invoke()
+        pred_nn = interpreter.get_tensor(output_details[0]['index'])[0][0]
+        pred_nn_label = int(pred_nn >= 0.5)
 
-            # Voto mayoritario
-            final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
-            st.markdown("---")
-            if final:
-                st.success("💳 PREDICCIÓN FINAL: APROBADO")
-            else:
-                st.error("❌ PREDICCIÓN FINAL: RECHAZADO")
+        # Otros modelos
+        pred_rf = model_rf.predict(new_transformed)[0]
+        pred_lgbm = model_lgbm.predict(new_transformed)[0]
+
+        st.markdown("### Resultados individuales")
+        st.write(f"🔹 Neural Network (TFLite): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
+        st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
+        st.write(f"🔹 LightGBM: {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
+
+        # Voto mayoritario
+        final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
+        st.markdown("---")
+        if final:
+            st.success("💳 PREDICCIÓN FINAL: APROBADO")
+        else:
+            st.error("❌ PREDICCIÓN FINAL: RECHAZADO")
 
 
 # ================================
