@@ -126,6 +126,8 @@ if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
 
             # ---- Crear target binario ----
             df['loan_status_bin'] = (df['loan_status'] == 'Approval').astype(int)
+            st.session_state["df"] = df
+
 
             st.success("Datos preparados correctamente para el EDA.")
 
