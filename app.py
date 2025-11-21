@@ -317,9 +317,9 @@ if page == "🧠 Predicción Crediticia":
 
         # Resultados
         st.markdown("### Resultados individuales")
-        st.write(f"🔹 Neural Network (TFLite): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
+        st.write(f"🔹 Neural Network (Multi-Layer Perceptron, MLP): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
         st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
-        st.write(f"🔹 LightGBM (simulado): {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
+        st.write(f"🔹 LightGBM: {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
 
         # Voto mayoritario
         final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
