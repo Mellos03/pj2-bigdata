@@ -244,7 +244,7 @@ if page == "🧠 Predicción Crediticia":
         st.warning("No se han cargado los modelos.")
         st.stop()
 
-    st.success("Modelos cargados correctamente (RF + NN).")
+    st.success("Modelos cargados correctamente (LightGBM + RF + NN).")
 
     # Recuperar modelos y componentes
     preprocessor = st.session_state["preprocessor"]
