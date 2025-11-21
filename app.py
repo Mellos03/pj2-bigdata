@@ -11,6 +11,8 @@ import tflite_runtime.interpreter as tflite
 from sklearn.decomposition import PCA
 import plotly.express as px
 import plotly.graph_objects as go
+import pickle
+
 
 # -------------------------------
 # Configuración de Streamlit
