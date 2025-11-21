@@ -204,29 +204,30 @@ if page == "🏦 Dashboard Corporativo":
 # 2️⃣ Predicción Crediticia Automática
 # ================================
 
+import joblib
+import tflite_runtime.interpreter as tflite
+
 # ---------- CARGA DE MODELOS DESDE LA MISMA CARPETA ----------
 if st.sidebar.button("Cargar Modelos"):
     try:
-        # Cargar modelos desde la carpeta del proyecto
+        # Cargar modelos .joblib
         model_rf = joblib.load("rf_best.joblib")
         model_lgbm = joblib.load("lgb_best.joblib")
         preprocessor = joblib.load("preprocessor.joblib")
 
-        # Cargar modelo TFLite
-        interpreter = tf.lite.Interpreter(model_path="keras_model.tflite")
+        # Cargar modelo TFLite (SIN TensorFlow)
+        interpreter = tflite.Interpreter(model_path="keras_model.tflite")
         interpreter.allocate_tensors()
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
 
-        # Guardar modelos y componentes en session_state
+        # Guardar en session_state
         st.session_state["model_rf"] = model_rf
         st.session_state["model_lgbm"] = model_lgbm
         st.session_state["preprocessor"] = preprocessor
         st.session_state["interpreter"] = interpreter
         st.session_state["input_details"] = input_details
         st.session_state["output_details"] = output_details
-
-        # Flag de carga completa
         st.session_state["models_loaded"] = True
 
         st.success("Modelos cargados correctamente.")
