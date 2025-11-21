@@ -87,6 +87,24 @@ if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
             df = load_data_mongo(mongo_uri, db_name, collection_name)
             st.success(f"Datos cargados: {df.shape[0]} filas x {df.shape[1]} columnas")
 
+    # ---- Aplanar columnas anidadas ----
+        nested_cols = ["demographics", "financial_profile", "credit_behavior", "loan_request", "ratios"]
+
+        for nested in nested_cols:
+            if nested in df.columns:
+                safe_dicts = [x if isinstance(x, dict) else {} for x in df[nested]]
+                expanded = pd.json_normalize(safe_dicts)
+                expanded.columns = [f"{nested}_{c}" for c in expanded.columns]
+                df = pd.concat([df.drop(columns=[nested]), expanded], axis=1)
+
+        # ---- Renombrar columnas ----
+        df.rename(columns=RENAME_MAP, inplace=True)
+
+        # ---- Crear target binario ----
+        df['loan_status_bin'] = (df['loan_status'] == 'Approval').astype(int)
+
+        st.success("Datos preparados correctamente para el EDA.")
+
 
 # ================================
 # 1️⃣ Dashboard Corporativo Ejecutiva
@@ -95,10 +113,12 @@ if page == "🏦 Dashboard Corporativo":
     st.title("🏦 Credit Risk Dashboard – Executive Edition")
 
     if 'df' in locals():
+
+        # ---- KPIs ----
         st.markdown("### 📊 KPIs Financieros")
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-        approval_rate = df['loan_status'].mean() * 100
+        approval_rate = df['loan_status_bin'].mean() * 100
         kpi1.metric("📈 Tasa Aprobación", f"{approval_rate:.2f}%")
         kpi2.metric("💰 Promedio Ingreso Anual", f"${df['annual_income'].mean():,.0f}")
         kpi3.metric("🏦 Promedio Deuda", f"${df['current_debt'].mean():,.0f}")
@@ -106,7 +126,7 @@ if page == "🏦 Dashboard Corporativo":
 
         st.markdown("---")
 
-        # Distribuciones numéricas
+        # ---- Distribuciones numéricas ----
         numeric_cols = [
             'age', 'years_employed', 'annual_income', 'credit_score',
             'credit_history_years', 'savings_assets', 'current_debt',
@@ -116,26 +136,28 @@ if page == "🏦 Dashboard Corporativo":
 
         st.markdown("### 📈 Distribuciones Numéricas")
         for col in numeric_cols:
-            fig = px.histogram(
-                df, x=col, color='loan_status',
-                color_discrete_map={0: 'firebrick', 1: 'green'},
-                marginal="box", nbins=50,
-                title=f"Distribución de {col}"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            if col in df.columns:
+                fig = px.histogram(
+                    df, x=col, color='loan_status_bin',
+                    color_discrete_map={0: 'firebrick', 1: 'green'},
+                    marginal="box", nbins=50,
+                    title=f"Distribución de {col}"
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-        # Distribuciones categóricas
+        # ---- Distribuciones categóricas ----
         categorical_cols = ['occupation_status', 'product_type', 'loan_intent']
         st.markdown("### 🏷 Distribuciones Categóricas")
         for col in categorical_cols:
-            fig = px.histogram(
-                df, x=col, color='loan_status',
-                color_discrete_map={0: 'firebrick', 1: 'green'},
-                title=f"{col} vs Loan Status"
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            if col in df.columns:
+                fig = px.histogram(
+                    df, x=col, color='loan_status_bin',
+                    color_discrete_map={0: 'firebrick', 1: 'green'},
+                    title=f"{col} vs Loan Status"
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-        # Matriz de correlación
+        # ---- Matriz de correlación ----
         st.markdown("### 🔗 Correlaciones Numéricas")
         corr = df[numeric_cols].corr()
         fig_corr = px.imshow(
@@ -145,7 +167,7 @@ if page == "🏦 Dashboard Corporativo":
         )
         st.plotly_chart(fig_corr, use_container_width=True)
 
-        # PCA 3D
+        # ---- PCA 3D ----
         st.markdown("### 🎯 PCA 3D – Separación por Loan Status")
         df_numeric = df[numeric_cols].fillna(0)
         pca = PCA(n_components=3)
@@ -154,7 +176,7 @@ if page == "🏦 Dashboard Corporativo":
 
         fig3d = px.scatter_3d(
             df, x='pca1', y='pca2', z='pca3',
-            color='loan_status',
+            color='loan_status_bin',
             color_discrete_map={0: 'firebrick', 1: 'green'},
             opacity=0.7,
             title="PCA 3D: Loan Status"
