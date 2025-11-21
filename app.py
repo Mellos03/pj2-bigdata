@@ -199,6 +199,39 @@ if page == "🏦 Dashboard Corporativo":
 # ================================
 # 2️⃣ Predicción Crediticia Automática
 # ================================
+
+# ---------- CARGA DE MODELOS DESDE LA MISMA CARPETA ----------
+if st.sidebar.button("Cargar Modelos"):
+    try:
+        # Cargar modelos desde la carpeta del proyecto
+        model_rf = pickle.load(open("model_rf.pkl", "rb"))
+        model_lgbm = pickle.load(open("model_lgbm.pkl", "rb"))
+        preprocessor = pickle.load(open("preprocessor.pkl", "rb"))
+
+        # Cargar modelo TFLite
+        interpreter = tf.lite.Interpreter(model_path="model_nn.tflite")
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        # Guardar modelos y componentes en session_state
+        st.session_state["model_rf"] = model_rf
+        st.session_state["model_lgbm"] = model_lgbm
+        st.session_state["preprocessor"] = preprocessor
+        st.session_state["interpreter"] = interpreter
+        st.session_state["input_details"] = input_details
+        st.session_state["output_details"] = output_details
+
+        # Flag de carga completa
+        st.session_state["models_loaded"] = True
+
+        st.success("Modelos cargados correctamente.")
+
+    except Exception as e:
+        st.error(f"Error cargando modelos: {e}")
+
+
+# ---------- SECCIÓN DE PREDICCIÓN ----------
 if page == "🧠 Predicción Crediticia":
     st.title("🧠 Predicción Crediticia – Executive Edition")
 
@@ -213,9 +246,8 @@ if page == "🧠 Predicción Crediticia":
 
     st.success("Modelos cargados correctamente.")
 
-    # Recuperamos las variables importantes
+    # Recuperar modelos y componentes
     df = st.session_state["df"]
-    models_loaded = st.session_state["models_loaded"]
     preprocessor = st.session_state["preprocessor"]
     interpreter = st.session_state["interpreter"]
     input_details = st.session_state["input_details"]
@@ -269,19 +301,20 @@ if page == "🧠 Predicción Crediticia":
             "occupation_status": [occupation_status]
         })
 
-        # Transformar con pipeline
+        # Transformación con preprocessor
         new_transformed = preprocessor.transform(new_data).astype("float32")
 
-        # ----- PREDICCIÓN CON TFLITE -----
+        # Predicción con TFLite
         interpreter.set_tensor(input_details[0]['index'], new_transformed)
         interpreter.invoke()
         pred_nn = interpreter.get_tensor(output_details[0]['index'])[0][0]
         pred_nn_label = int(pred_nn >= 0.5)
 
-        # Otros modelos
+        # Predicciones adicionales
         pred_rf = model_rf.predict(new_transformed)[0]
         pred_lgbm = model_lgbm.predict(new_transformed)[0]
 
+        # Resultados
         st.markdown("### Resultados individuales")
         st.write(f"🔹 Neural Network (TFLite): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
         st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
@@ -289,11 +322,13 @@ if page == "🧠 Predicción Crediticia":
 
         # Voto mayoritario
         final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
+
         st.markdown("---")
         if final:
             st.success("💳 PREDICCIÓN FINAL: APROBADO")
         else:
             st.error("❌ PREDICCIÓN FINAL: RECHAZADO")
+
 
 
 # ================================
