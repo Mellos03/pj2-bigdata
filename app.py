@@ -78,9 +78,9 @@ def load_data_mongo(uri, db_name, collection, n_rows=50000):
 # -------------------------------
 if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
     st.sidebar.subheader("Conexión MongoDB Azure")
-    mongo_uri = st.sidebar.text_input("Mongo URI", "mongodb+srv://<user>:<password>@cluster0.mongodb.net/test")
-    db_name = st.sidebar.text_input("Base de datos", "credit_db")
-    collection_name = st.sidebar.text_input("Colección", "applications")
+    mongo_uri = st.sidebar.text_input("Mongo URI", "mongodb+srv://Mongo:Herrera123@mongoscar.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000")
+    db_name = st.sidebar.text_input("Base de datos", "CreditDB")
+    collection_name = st.sidebar.text_input("Colección", "LoanApproval")
     
     if st.sidebar.button("🔄 Cargar datos"):
         with st.spinner("Cargando datos desde MongoDB Azure..."):
