@@ -257,6 +257,34 @@ if page == "Dashboard Corporativo":
 # =====================================================
 # Predicción Crediticia – Diseño Corporativo
 # =====================================================
+# ---------- CARGA DE MODELOS DESDE LA MISMA CARPETA ----------
+if st.sidebar.button("Cargar Modelos"):
+    try:
+        # Cargar modelos reales
+        model_rf = joblib.load("rf_best.joblib")
+        preprocessor = joblib.load("preprocessor.joblib")
+
+        # Cargar modelo TFLite (SIN TensorFlow)
+        interpreter = tflite.Interpreter(model_path="keras_model.tflite")
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        # Guardar en session_state
+        st.session_state["model_rf"] = model_rf
+        st.session_state["preprocessor"] = preprocessor
+        st.session_state["interpreter"] = interpreter
+        st.session_state["input_details"] = input_details
+        st.session_state["output_details"] = output_details
+        st.session_state["models_loaded"] = True
+
+        st.success("Modelos cargados correctamente (RF + NN + LightGBM)")
+    except Exception as e:
+        st.error(f"Error cargando modelos: {e}")
+
+# =====================================================
+# PREDICCIÓN CREDITICIA
+# =====================================================
 if page == "Predicción Crediticia":
     st.title("Predicción Crediticia – Executive Edition")
 
@@ -339,9 +367,6 @@ if page == "Predicción Crediticia":
         # Fake LightGBM
         pred_lgbm = pred_nn_label
 
-        # Resultado final por voto mayoritario
-        final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
-
         # Mostrar resultados en tarjetas
         st.markdown("### Resultados individuales")
         result_cols = st.columns(3)
@@ -350,20 +375,23 @@ if page == "Predicción Crediticia":
             ["Neural Network (MLP)", "Random Forest", "LightGBM"],
             [pred_nn_label, pred_rf, pred_lgbm]
         ):
-            status = "Aprobado" if value==1 else "Rechazado"
-            color = "#2ca02c" if value==1 else "#d62728"
+            status = "Aprobado" if value == 1 else "Rechazado"
+            color = "#2ca02c" if value == 1 else "#d62728"
             col.markdown(f"""
-                <div class="kpi-card">
-                    <div class="kpi-title">{label}</div>
-                    <div class="kpi-value" style="color:{color}">{status}</div>
+                <div class="kpi-card" style="padding:15px;border-radius:10px;background-color:#f5f5f5;text-align:center;">
+                    <div class="kpi-title" style="font-weight:bold">{label}</div>
+                    <div class="kpi-value" style="color:{color};font-size:18px">{status}</div>
                 </div>
             """, unsafe_allow_html=True)
 
+        # Resultado final por voto mayoritario
+        final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
         st.markdown("---")
         if final:
             st.success("PREDICCIÓN FINAL: APROBADO")
         else:
             st.error("PREDICCIÓN FINAL: RECHAZADO")
+
 
 # =====================================================
 # Reporte HTML
