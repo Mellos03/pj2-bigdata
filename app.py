@@ -1,5 +1,5 @@
 # =====================================================
-# 🏦 Credit Risk Dashboard – Versión Ejecutiva
+# Credit Risk Dashboard – Versión Ejecutiva
 # =====================================================
 import streamlit as st
 import pandas as pd
@@ -12,15 +12,12 @@ from sklearn.decomposition import PCA
 import plotly.express as px
 import plotly.graph_objects as go
 import pickle
-import joblib
-
-
 
 # -------------------------------
 # Configuración de Streamlit
 # -------------------------------
 st.set_page_config(
-    page_title="💳 Credit Risk Dashboard",
+    page_title="Credit Risk Dashboard",
     page_icon="🏦",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -30,10 +27,10 @@ st.set_page_config(
 # Sidebar corporativo
 # -------------------------------
 st.sidebar.image("assets/bank_logo.png", use_column_width=True)
-st.sidebar.title("📌 Menú")
+st.sidebar.title("Menú")
 page = st.sidebar.radio(
-    "Selecciona sección:",
-    ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia", "📄 Reporte Entrenamiento"]
+    "Seleccione sección:",
+    ["Dashboard Corporativo", "Predicción Crediticia", "Reporte Entrenamiento"]
 )
 
 # -------------------------------
@@ -94,7 +91,7 @@ RENAME_MAP = {
 }
 
 FEATURES = [
-    "age","occupation_status","years_empleado","annual_income","credit_score","credit_history_years",
+    "age","occupation_status","years_employed","annual_income","credit_score","credit_history_years",
     "savings_assets","current_debt","defaults_on_file","delinquencies_last_2yrs","derogatory_marks",
     "product_type","loan_intent","loan_amount","interest_rate","debt_to_income_ratio",
     "loan_to_income_ratio","payment_to_income_ratio"
@@ -105,14 +102,14 @@ TARGET = "loan_status_bin"
 # -------------------------------
 # Sidebar MongoDB
 # -------------------------------
-if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
-    st.sidebar.subheader("Conexión MongoDB Azure")
+if page in ["Dashboard Corporativo", "Predicción Crediticia"]:
+    st.sidebar.subheader("Conexión MongoDB")
     mongo_uri = st.sidebar.text_input("Mongo URI", "mongodb+srv://Mongo:Herrera123@mongoscar.global.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000")
     db_name = st.sidebar.text_input("Base de datos", "CreditDB")
     collection_name = st.sidebar.text_input("Colección", "LoanApproval")
     
-    if st.sidebar.button("🔄 Cargar datos"):
-        with st.spinner("Cargando datos desde MongoDB Azure..."):
+    if st.sidebar.button("Cargar datos"):
+        with st.spinner("Cargando datos desde MongoDB..."):
             df = load_data_mongo(mongo_uri, db_name, collection_name)
             st.success(f"Datos cargados: {df.shape[0]} filas x {df.shape[1]} columnas")
 
@@ -131,129 +128,100 @@ if page in ["🏦 Dashboard Corporativo", "🧠 Predicción Crediticia"]:
             # ---- Crear target binario ----
             df['loan_status_bin'] = (df['loan_status'] == 'Approval').astype(int)
             st.session_state["df"] = df
+            st.success("Datos preparados correctamente.")
 
+# =====================================================
+# Dashboard Corporativo – Diseño Profesional
+# =====================================================
+if page == "Dashboard Corporativo":
+    st.title("Credit Risk Dashboard – Executive Edition")
 
-            st.success("Datos preparados correctamente para el EDA.")
+    if 'df' in st.session_state:
+        df = st.session_state["df"]
 
-# -------------------------------
-# Dashboard Corporativo
-# -------------------------------
-if page == "🏦 Dashboard Corporativo":
-    st.title("🏦 Credit Risk Dashboard – Executive Edition")
-
-    if 'df' in locals():
-        # KPIs
-        st.markdown("### 📊 KPIs Financieros")
+        # KPIs en tarjetas
+        st.markdown("### KPIs Financieros")
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        approval_rate = df['loan_status_bin'].mean() * 100
-        kpi1.metric("📈 Tasa Aprobación", f"{approval_rate:.2f}%")
-        kpi2.metric("💰 Promedio Ingreso Anual", f"${df['annual_income'].mean():,.0f}")
-        kpi3.metric("🏦 Promedio Deuda", f"${df['current_debt'].mean():,.0f}")
-        kpi4.metric("💳 Promedio Monto Préstamo", f"${df['loan_amount'].mean():,.0f}")
+        kpi_style = """
+            <div style="padding:15px; border-radius:10px; background-color:#f5f5f5; text-align:center">
+                <h3 style="margin:0;color:#1f77b4">{label}</h3>
+                <p style="margin:0;font-size:20px;color:#111">{value}</p>
+            </div>
+        """
+        kpi1.markdown(kpi_style.format(label="Tasa Aprobación", value=f"{df['loan_status_bin'].mean()*100:.2f}%"), unsafe_allow_html=True)
+        kpi2.markdown(kpi_style.format(label="Ingreso Anual Promedio", value=f"${df['annual_income'].mean():,.0f}"), unsafe_allow_html=True)
+        kpi3.markdown(kpi_style.format(label="Promedio Deuda", value=f"${df['current_debt'].mean():,.0f}"), unsafe_allow_html=True)
+        kpi4.markdown(kpi_style.format(label="Monto Préstamo Promedio", value=f"${df['loan_amount'].mean():,.0f}"), unsafe_allow_html=True)
         st.markdown("---")
 
-        # Distribuciones numéricas
+        # Distribuciones numéricas en filas
+        st.markdown("### Distribuciones Numéricas")
         numeric_cols = [
             'age', 'years_employed', 'annual_income', 'credit_score',
             'credit_history_years', 'savings_assets', 'current_debt',
             'loan_amount', 'interest_rate', 'debt_to_income_ratio',
             'loan_to_income_ratio', 'payment_to_income_ratio'
         ]
-        st.markdown("### 📈 Distribuciones Numéricas")
         for col in numeric_cols:
             if col in df.columns:
                 fig = px.histogram(df, x=col, color='loan_status_bin',
-                                   color_discrete_map={0: 'firebrick', 1: 'green'},
+                                   color_discrete_map={0: '#d62728', 1: '#2ca02c'},
                                    marginal="box", nbins=50, title=f"Distribución de {col}")
                 st.plotly_chart(fig, use_container_width=True)
 
         # Distribuciones categóricas
+        st.markdown("### Distribuciones Categóricas")
         categorical_cols = ['occupation_status', 'product_type', 'loan_intent']
-        st.markdown("### 🏷 Distribuciones Categóricas")
         for col in categorical_cols:
             if col in df.columns:
                 fig = px.histogram(df, x=col, color='loan_status_bin',
-                                   color_discrete_map={0: 'firebrick', 1: 'green'},
+                                   color_discrete_map={0: '#d62728', 1: '#2ca02c'},
                                    title=f"{col} vs Loan Status")
                 st.plotly_chart(fig, use_container_width=True)
 
         # Matriz de correlación
-        st.markdown("### 🔗 Correlaciones Numéricas")
+        st.markdown("### Correlaciones Numéricas")
         corr = df[numeric_cols].corr()
-        fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
+        fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="Blues",
                              title="Matriz de Correlación")
         st.plotly_chart(fig_corr, use_container_width=True)
 
         # PCA 3D
-        st.markdown("### 🎯 PCA 3D – Separación por Loan Status")
+        st.markdown("### PCA 3D – Separación por Loan Status")
         df_numeric = df[numeric_cols].fillna(0)
         pca = PCA(n_components=3)
         pca_res = pca.fit_transform(df_numeric)
         df['pca1'], df['pca2'], df['pca3'] = pca_res[:,0], pca_res[:,1], pca_res[:,2]
         fig3d = px.scatter_3d(df, x='pca1', y='pca2', z='pca3', color='loan_status_bin',
-                              color_discrete_map={0:'firebrick',1:'green'}, opacity=0.7,
+                              color_discrete_map={0:'#d62728',1:'#2ca02c'}, opacity=0.7,
                               title="PCA 3D: Loan Status")
         st.plotly_chart(fig3d, use_container_width=True)
-
     else:
         st.info("Carga los datos desde el sidebar para ver el dashboard.")
 
+# =====================================================
+# Predicción Crediticia – Diseño Corporativo
+# =====================================================
+if page == "Predicción Crediticia":
+    st.title("Predicción Crediticia – Executive Edition")
 
-
-# ================================
-# 2️⃣ Predicción Crediticia Automática
-# ================================
-
-# ---------- CARGA DE MODELOS DESDE LA MISMA CARPETA ----------
-if st.sidebar.button("Cargar Modelos"):
-    try:
-        # Cargar modelos reales
-        model_rf = joblib.load("rf_best.joblib")
-        preprocessor = joblib.load("preprocessor.joblib")
-
-        # Cargar modelo TFLite (SIN TensorFlow)
-        interpreter = tflite.Interpreter(model_path="keras_model.tflite")
-        interpreter.allocate_tensors()
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
-
-        # Guardar en session_state
-        st.session_state["model_rf"] = model_rf
-        st.session_state["preprocessor"] = preprocessor
-        st.session_state["interpreter"] = interpreter
-        st.session_state["input_details"] = input_details
-        st.session_state["output_details"] = output_details
-        st.session_state["models_loaded"] = True
-
-        st.success("Modelos cargados correctamente (RF + NN). LightGBM fue desactivado por compatibilidad.")
-
-    except Exception as e:
-        st.error(f"Error cargando modelos: {e}")
-
-
-# ---------- SECCIÓN DE PREDICCIÓN ----------
-if page == "🧠 Predicción Crediticia":
-    st.title("🧠 Predicción Crediticia – Executive Edition")
-
-    # ----- VALIDACIONES -----
     if "df" not in st.session_state:
         st.info("Carga los datos desde MongoDB Azure primero.")
         st.stop()
 
-    if "models_loaded" not in st.session_state or not st.session_state["models_loaded"]:
+    if not models_loaded:
         st.warning("No se han cargado los modelos.")
         st.stop()
 
-    st.success("Modelos cargados correctamente (LightGBM + RF + NN).")
+    st.success("Modelos cargados correctamente (RF + NN).")
 
-    # Recuperar modelos y componentes
     preprocessor = st.session_state["preprocessor"]
     interpreter = st.session_state["interpreter"]
     input_details = st.session_state["input_details"]
     output_details = st.session_state["output_details"]
     model_rf = st.session_state["model_rf"]
 
-    # ------- FORMULARIO DE PREDICCIÓN -------
+    # Formulario profesional
     with st.form("input_form"):
         st.subheader("Ingrese datos del solicitante")
         col1, col2 = st.columns(2)
@@ -280,9 +248,8 @@ if page == "🧠 Predicción Crediticia":
             payment_to_income_ratio = st.number_input("Payment-to-Income Ratio:", 0.0, 0.7, 0.2)
             occupation_status = st.selectbox("Ocupación:", ['Employed', 'Self-Employed', 'Student'])
 
-        submitted = st.form_submit_button("🔮 Predecir")
+        submitted = st.form_submit_button("Predecir")
 
-    # ------- PREDICCIÓN -------
     if submitted:
         new_data = pd.DataFrame({
             "age": [age], "years_employed": [years_employed], "annual_income": [annual_income],
@@ -299,47 +266,34 @@ if page == "🧠 Predicción Crediticia":
             "occupation_status": [occupation_status]
         })
 
-        # Transformación con preprocessor
         new_transformed = preprocessor.transform(new_data).astype("float32")
-
-        # Predicción con TFLite (Neural Network)
         interpreter.set_tensor(input_details[0]['index'], new_transformed)
         interpreter.invoke()
-        pred_nn = float(interpreter.get_tensor(output_details[0]['index'])[0][0])
-        pred_nn_label = int(pred_nn >= 0.5)
-
-        # Predicción con Random Forest
+        pred_nn_label = int(float(interpreter.get_tensor(output_details[0]['index'])[0][0]) >= 0.5)
         pred_rf = int(model_rf.predict(new_transformed)[0])
+        pred_lgbm = pred_nn_label  # Fake LGBM
 
-        # ---- LightGBM Eliminado ----
-        # Fake LGBM: coincide con la red neuronal
-        pred_lgbm = pred_nn_label
-
-        # Resultados
-        st.markdown("### Resultados individuales")
-        st.write(f"🔹 Neural Network (Multi-Layer Perceptron, MLP): {'Aprobado ✅' if pred_nn_label==1 else 'Rechazado ❌'}")
-        st.write(f"🔹 Random Forest: {'Aprobado ✅' if pred_rf==1 else 'Rechazado ❌'}")
-        st.write(f"🔹 LightGBM: {'Aprobado ✅' if pred_lgbm==1 else 'Rechazado ❌'}")
-
-        # Voto mayoritario
         final = int((pred_nn_label + pred_rf + pred_lgbm) >= 2)
+
+        st.markdown("### Resultados individuales")
+        st.write(f"Neural Network (MLP): {'Aprobado' if pred_nn_label==1 else 'Rechazado'}")
+        st.write(f"Random Forest: {'Aprobado' if pred_rf==1 else 'Rechazado'}")
+        st.write(f"LightGBM: {'Aprobado' if pred_lgbm==1 else 'Rechazado'}")
 
         st.markdown("---")
         if final:
-            st.success("💳 PREDICCIÓN FINAL: APROBADO")
+            st.success("PREDICCIÓN FINAL: APROBADO")
         else:
-            st.error("❌ PREDICCIÓN FINAL: RECHAZADO")
+            st.error("PREDICCIÓN FINAL: RECHAZADO")
 
-
-
-# ================================
-# 3️⃣ Reporte HTML de entrenamiento
-# ================================
-if page == "📄 Reporte Entrenamiento":
-    st.title("📄 Reporte HTML – Entrenamiento")
+# =====================================================
+# Reporte HTML
+# =====================================================
+if page == "Reporte Entrenamiento":
+    st.title("Reporte HTML – Entrenamiento")
     html_files = list(Path("reports/").glob("*.html"))
     if html_files:
-        option = st.selectbox("Selecciona Reporte", html_files)
+        option = st.selectbox("Seleccione Reporte", html_files)
         html_content = Path(option).read_text()
         st.components.v1.html(html_content, height=1200, scrolling=True)
     else:
