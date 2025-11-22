@@ -22,47 +22,56 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# -------------------------------
-# Tema corporativo global con CSS
-# -------------------------------
+# ==============================
+# Tema corporativo gris + naranja
+# ==============================
 st.markdown("""
-    <style>
-    /* Fondos y colores */
-    .reportview-container {
-        background-color: #f4f6f9;
-        color: #1c1c1c;
-    }
-    .stButton>button {
-        background-color:#1f77b4;
-        color:white;
-        border-radius:5px;
-        padding:0.5em 1em;
-    }
-    .stButton>button:hover {
-        background-color:#155d8b;
-        color:white;
-    }
-    /* Tarjetas KPI */
-    .kpi-card {
-        background-color:#ffffff;
-        border-radius:10px;
-        padding:15px;
-        text-align:center;
-        box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
-        margin-bottom:10px;
-    }
-    .kpi-title {
-        font-size:16px;
-        color:#1f77b4;
-        margin-bottom:5px;
-    }
-    .kpi-value {
-        font-size:24px;
-        font-weight:bold;
-        color:#111111;
-    }
-    </style>
+<style>
+/* Fondo general */
+.reportview-container {
+    background-color: #f4f4f4;
+    color: #1c1c1c;
+}
+
+/* Tarjetas KPI */
+.kpi-card {
+    padding: 15px;
+    border-radius: 10px;
+    background-color: #e0e0e0; /* gris claro */
+    text-align: center;
+    margin-bottom: 10px;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+}
+
+.kpi-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ff7f0e; /* naranja mandarina */
+    margin-bottom: 5px;
+}
+
+.kpi-value {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333333;
+}
+
+/* Botones */
+.stButton>button {
+    background-color:#ff7f0e;
+    color:white;
+    border-radius:5px;
+    padding:0.5em 1em;
+    font-weight:bold;
+}
+
+.stButton>button:hover {
+    background-color:#e65c00;
+    color:white;
+}
+</style>
 """, unsafe_allow_html=True)
+
 
 # -------------------------------
 # Sidebar corporativo
