@@ -260,16 +260,18 @@ if page == "Dashboard Corporativo":
 if page == "Predicción Crediticia":
     st.title("Predicción Crediticia – Executive Edition")
 
-    # Validaciones
+    # ----- VALIDACIONES -----
     if "df" not in st.session_state:
         st.info("Carga los datos desde MongoDB Azure primero.")
         st.stop()
 
-    if not models_loaded:
-        st.warning("No se han cargado los modelos.")
+    # Verificar que los modelos estén cargados
+    required_keys = ["preprocessor", "interpreter", "input_details", "output_details", "model_rf", "models_loaded"]
+    if not all(k in st.session_state for k in required_keys) or not st.session_state.get("models_loaded", False):
+        st.warning("Primero debes cargar los modelos desde el sidebar.")
         st.stop()
 
-    st.success("Modelos cargados correctamente (RF + NN + LGBM).")
+    st.success("Modelos cargados correctamente (LightGBM + RF + NN).")
 
     # Recuperar modelos
     preprocessor = st.session_state["preprocessor"]
